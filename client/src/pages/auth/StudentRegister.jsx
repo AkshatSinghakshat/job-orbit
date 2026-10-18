@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -12,7 +13,10 @@ import {
   Loader2,
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api";
+import EmailOtpVerification from "./EmailOtpVerification";
+
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 function StudentRegister() {
   const navigate = useNavigate();
@@ -31,11 +35,14 @@ function StudentRegister() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setForm((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
 
     setError("");
@@ -43,84 +50,124 @@ function StudentRegister() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setError("");
 
-    // Required fields
     if (
       !form.name.trim() ||
       !form.email.trim() ||
       !form.password ||
       !form.confirmPassword
     ) {
-      setError("Please fill all required fields");
+      setError("Please fill in all required fields.");
       return;
     }
 
-    // Password match
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(form.email.trim())) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match");
+      setError("Passwords do not match.");
       return;
     }
 
-    // Password length
-    if (form.password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (
+      form.passingYear &&
+      (!Number.isInteger(Number(form.passingYear)) ||
+        Number(form.passingYear) < 1900 ||
+        Number(form.passingYear) > 2200)
+    ) {
+      setError("Please enter a valid passing year.");
       return;
     }
 
     try {
       setLoading(true);
 
+      const email = form.email.trim().toLowerCase();
+
+      const payload = {
+        name: form.name.trim(),
+        email,
+        password: form.password,
+        role: "student",
+        phone: form.phone.trim(),
+        college: form.college.trim(),
+        course: form.course.trim(),
+        branch: form.branch.trim(),
+        passingYear: form.passingYear
+          ? Number(form.passingYear)
+          : null,
+      };
+
       const response = await axios.post(
         `${API_URL}/auth/register`,
-        {
-          name: form.name.trim(),
-          email: form.email.trim(),
-          password: form.password,
-          role: "student",
-
-          phone: form.phone.trim(),
-          college: form.college.trim(),
-          course: form.course.trim(),
-          branch: form.branch.trim(),
-          passingYear: form.passingYear
-            ? Number(form.passingYear)
-            : null,
-        }
+        payload
       );
 
-      if (response.data.success) {
-        // Registration successful
-        navigate("/login", {
-          state: {
-            message:
-              "Student account created successfully. Please login.",
-          },
-        });
+      if (
+        response.data?.success &&
+        response.data?.requiresOtp
+      ) {
+        setOtpEmail(email);
+      } else if (response.data?.success) {
+        setError(
+          "Email verification was not initiated. Please check your backend OTP registration route."
+        );
       } else {
         setError(
-          response.data.message ||
-            "Registration failed"
+          response.data?.message || "Registration failed."
         );
       }
-    } catch (error) {
-      console.error("Student Registration Error:", error);
+    } catch (err) {
+      console.error(
+        "Student Registration Error:",
+        err.response?.data || err
+      );
 
       setError(
-        error.response?.data?.message ||
-          "Unable to connect to server"
+        err.response?.data?.message ||
+          "Unable to connect to server. Please try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
+  // OTP verification screen
+  if (otpEmail) {
+    return (
+      <div className="min-h-screen bg-slate-950 px-4 py-10">
+        <div className="mx-auto w-full max-w-2xl">
+          <button
+            type="button"
+            onClick={() => {
+              setOtpEmail("");
+              setError("");
+            }}
+            className="mb-6 flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
+          >
+            <ArrowLeft size={17} />
+            Back to registration
+          </button>
+
+          <EmailOtpVerification email={otpEmail} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-10">
-
       <div className="mx-auto w-full max-w-2xl">
-
         {/* Back */}
         <button
           type="button"
@@ -131,12 +178,10 @@ function StudentRegister() {
           Back
         </button>
 
-        {/* Card */}
+        {/* Registration Card */}
         <div className="rounded-2xl bg-white p-7 shadow-2xl md:p-9">
-
           {/* Header */}
           <div className="mb-8 flex items-center gap-4">
-
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
               <GraduationCap size={24} />
             </div>
@@ -150,22 +195,19 @@ function StudentRegister() {
                 Create your JobOrbit student account
               </p>
             </div>
-
           </div>
 
           {/* Error */}
           {error && (
-            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div
+              role="alert"
+              className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
               {error}
             </div>
           )}
 
-          {/* Form */}
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-5"
-          >
-
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name */}
             <Input
               icon={User}
@@ -174,6 +216,7 @@ function StudentRegister() {
               value={form.name}
               onChange={handleChange}
               placeholder="Enter your full name"
+              autoComplete="name"
               required
             />
 
@@ -186,6 +229,7 @@ function StudentRegister() {
               value={form.email}
               onChange={handleChange}
               placeholder="student@example.com"
+              autoComplete="email"
               required
             />
 
@@ -193,15 +237,16 @@ function StudentRegister() {
             <Input
               icon={Phone}
               label="Phone"
+              type="tel"
               name="phone"
               value={form.phone}
               onChange={handleChange}
               placeholder="Enter phone number"
+              autoComplete="tel"
             />
 
-            {/* Password */}
+            {/* Passwords */}
             <div className="grid gap-5 md:grid-cols-2">
-
               <Input
                 icon={Lock}
                 label="Password"
@@ -209,7 +254,8 @@ function StudentRegister() {
                 name="password"
                 value={form.password}
                 onChange={handleChange}
-                placeholder="Create password"
+                placeholder="Minimum 8 characters"
+                autoComplete="new-password"
                 required
               />
 
@@ -221,9 +267,9 @@ function StudentRegister() {
                 value={form.confirmPassword}
                 onChange={handleChange}
                 placeholder="Confirm password"
+                autoComplete="new-password"
                 required
               />
-
             </div>
 
             {/* College */}
@@ -236,16 +282,15 @@ function StudentRegister() {
               placeholder="Enter college name"
             />
 
-            {/* Course + Branch */}
+            {/* Course and Branch */}
             <div className="grid gap-5 md:grid-cols-2">
-
               <Input
                 icon={BookOpen}
                 label="Course"
                 name="course"
                 value={form.course}
                 onChange={handleChange}
-                placeholder="e.g. B.Tech"
+                placeholder="e.g. B.Tech, BCA, MCA"
               />
 
               <Input
@@ -256,7 +301,6 @@ function StudentRegister() {
                 onChange={handleChange}
                 placeholder="e.g. Computer Science"
               />
-
             </div>
 
             {/* Passing Year */}
@@ -268,6 +312,8 @@ function StudentRegister() {
               value={form.passingYear}
               onChange={handleChange}
               placeholder="e.g. 2027"
+              min="1900"
+              max="2200"
             />
 
             {/* Submit */}
@@ -282,13 +328,12 @@ function StudentRegister() {
                     size={19}
                     className="animate-spin"
                   />
-                  Creating Account...
+                  Sending OTP...
                 </>
               ) : (
-                "Create Student Account"
+                "Register & Send Email OTP"
               )}
             </button>
-
           </form>
 
           {/* Login */}
@@ -302,13 +347,13 @@ function StudentRegister() {
               Login
             </button>
           </p>
-
         </div>
       </div>
     </div>
   );
 }
 
+// Reusable Input
 function Input({
   icon: Icon,
   label,
@@ -317,38 +362,44 @@ function Input({
   value,
   onChange,
   placeholder,
+  autoComplete,
   required = false,
+  min,
+  max,
 }) {
   return (
     <div>
-
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label
+        htmlFor={name}
+        className="mb-2 block text-sm font-medium text-slate-700"
+      >
         {label}
-
         {required && (
           <span className="text-red-500"> *</span>
         )}
       </label>
 
       <div className="relative">
-
         <Icon
           size={18}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
         />
 
         <input
+          id={name}
           type={type}
           name={name}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
+          autoComplete={autoComplete}
           required={required}
+          min={min}
+          max={max}
+          minLength={name === "password" ? 8 : undefined}
           className="w-full rounded-lg border border-slate-300 py-3 pl-10 pr-4 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
         />
-
       </div>
-
     </div>
   );
 }

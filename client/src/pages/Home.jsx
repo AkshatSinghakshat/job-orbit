@@ -23,6 +23,22 @@ const API_URL = "http://localhost:5000/api";
 
 function Home() {
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+const isLoggedIn = Boolean(token);
+
+const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+const role = (
+  localStorage.getItem("role") ||
+  user.role ||
+  user.userType ||
+  "student"
+).toLowerCase();
+
+const dashboardPath =
+  role === "company" || role === "employer"
+    ? "/company/dashboard"
+    : "/student/dashboard";
 
   const [jobs, setJobs] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -342,25 +358,47 @@ function Home() {
             </a>
           </nav>
 
-          {/* Auth */}
+  {/* Auth */}
+<div className="flex items-center gap-2">
+  {isLoggedIn ? (
+    <>
+      <button
+        type="button"
+        onClick={() => navigate("/feed")}
+        className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+      >
+        Feed
+      </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate("/login")}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-            >
-              Login
-            </button>
+      <button
+        type="button"
+        onClick={() => navigate(dashboardPath)}
+        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500"
+      >
+        Dashboard
+      </button>
+    </>
+  ) : (
+    <>
+      <button
+        type="button"
+        onClick={() => navigate("/login")}
+        className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+      >
+        Login
+      </button>
 
-            <button
-              type="button"
-              onClick={() => navigate("/register")}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500"
-            >
-              Get Started
-            </button>
-          </div>
+      <button
+        type="button"
+        onClick={() => navigate("/register")}
+        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500"
+      >
+        Get Started
+      </button>
+    </>
+  )}
+</div>
+
         </div>
       </header>
 
@@ -584,10 +622,10 @@ function Home() {
             <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {jobs.slice(0, 6).map((job) => (
                 <JobCard
-                  key={job.id || job._id}
-                  job={job}
-                  onClick={() => navigate("/login")}
-                />
+  key={job.id || job._id}
+  job={job}
+  onClick={() => navigate(`/jobs/${job.id || job._id}`)}
+/>
               ))}
             </div>
           )}

@@ -8,13 +8,14 @@ import {
   Building2,
   MapPin,
   Globe,
+  FileText,
   Loader2,
   AlertCircle,
   ArrowLeft,
   Edit3,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-
+const SERVER_URL = "http://localhost:5000";
 const API_URL = "http://localhost:5000/api";
 
 function UserProfile() {
@@ -385,6 +386,24 @@ if (!isOwnProfile) {
       className="mt-2 block break-all font-medium text-blue-400 hover:underline"
     >
       {student.linkedin}
+    </a>
+  </div>
+)}
+{student?.resume && (
+  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+    <div className="flex items-center gap-2 text-sm text-slate-400">
+      <FileText size={19} />
+      Resume
+    </div>
+
+    <a
+      href={`${SERVER_URL}${student.resume}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+    >
+      <FileText size={16} />
+      View Resume
     </a>
   </div>
 )}
