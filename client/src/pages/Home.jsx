@@ -17,9 +17,17 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  Menu,
+  X,
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api";
+// Use VITE_API_URL in .env; local and deployed defaults are handled separately.
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV
+    ? "http://localhost:5000/api"
+    : "https://joborbit-api.onrender.com/api")
+).replace(/\/+$/, "");
 
 function Home() {
   const navigate = useNavigate();
@@ -55,6 +63,7 @@ const dashboardPath =
   const [keyword, setKeyword] = useState("");
   const [location, setLocation] = useState("");
   const [searching, setSearching] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // ========================================
   // GET LIVE JOBS
@@ -89,7 +98,9 @@ const dashboardPath =
       setJobs([]);
       setJobsError(
         error.response?.data?.message ||
-          "Jobs are currently unavailable."
+          (error.response
+            ? `Jobs API failed (HTTP ${error.response.status}). Check the backend route.`
+            : "Cannot reach the backend. Check VITE_API_URL, backend status, and CORS.")
       );
     } finally {
       setLoadingJobs(false);
@@ -132,7 +143,9 @@ const dashboardPath =
       setCompanies([]);
       setCompaniesError(
         error.response?.data?.message ||
-          "Companies are currently unavailable."
+          (error.response
+            ? `Companies API failed (HTTP ${error.response.status}). Check the backend route.`
+            : "Cannot reach the backend. Check VITE_API_URL, backend status, and CORS.")
       );
     } finally {
       setLoadingCompanies(false);
@@ -181,7 +194,9 @@ const dashboardPath =
       setTrainingInstitutes([]);
       setTrainingError(
         error.response?.data?.message ||
-          "Training institutes are currently unavailable."
+          (error.response
+            ? `Training API failed (HTTP ${error.response.status}). Check the backend route.`
+            : "Cannot reach the backend. Check VITE_API_URL, backend status, and CORS.")
       );
     } finally {
       setLoadingTraining(false);
@@ -253,7 +268,9 @@ const dashboardPath =
 
       setJobsError(
         error.response?.data?.message ||
-          "Unable to search jobs."
+          (error.response
+            ? `Job search failed (HTTP ${error.response.status}).`
+            : "Cannot reach the backend. Check VITE_API_URL, backend status, and CORS.")
       );
     } finally {
       setSearching(false);
@@ -300,23 +317,23 @@ const dashboardPath =
 
       <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-2xl">
 
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-6">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-5 md:px-6 md:py-4">
 
           {/* Logo */}
 
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="group flex items-center gap-3"
+            className="group flex min-w-0 items-center gap-2 sm:gap-3"
           >
-            <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-600/30 transition duration-300 group-hover:scale-105">
-              <BriefcaseBusiness size={24} />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11 bg-blue-600 shadow-lg shadow-blue-600/30 transition duration-300 group-hover:scale-105">
+              <BriefcaseBusiness size={22} />
 
               <span className="absolute inset-0 animate-ping rounded-xl bg-blue-500/20" />
             </div>
 
             <div className="text-left">
-              <div className="text-xl font-bold">
+              <div className="text-lg font-bold sm:text-xl">
                 JobOrbit
               </div>
 
@@ -328,7 +345,7 @@ const dashboardPath =
 
           {/* Navigation */}
 
-          <nav className="hidden items-center gap-8 md:flex">
+          <nav className="hidden items-center gap-5 lg:gap-8 md:flex">
             <a
               href="#jobs"
               className="text-sm text-slate-300 transition hover:text-white"
@@ -358,8 +375,8 @@ const dashboardPath =
             </a>
           </nav>
 
-  {/* Auth */}
-<div className="flex items-center gap-2">
+  {/* Desktop auth actions */}
+<div className="hidden items-center gap-2 sm:flex">
   {isLoggedIn ? (
     <>
       <button
@@ -399,7 +416,46 @@ const dashboardPath =
   )}
 </div>
 
+          <button
+            type="button"
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition hover:bg-white/10 md:hidden"
+          >
+            {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
+          </button>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="border-t border-white/10 bg-slate-950/95 px-4 pb-4 pt-3 shadow-xl md:hidden">
+            <nav className="mx-auto flex max-w-7xl flex-col gap-1">
+              {[
+                ["Find Jobs", "#jobs"],
+                ["Companies", "#companies"],
+                ["Training", "#training"],
+                ["Features", "#features"],
+              ].map(([label, href]) => (
+                <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="rounded-xl px-3 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                  {label}
+                </a>
+              ))}
+              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
+                {isLoggedIn ? (
+                  <>
+                    <button type="button" onClick={() => { setMobileMenuOpen(false); navigate("/feed"); }} className="min-h-11 rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200">Feed</button>
+                    <button type="button" onClick={() => { setMobileMenuOpen(false); navigate(dashboardPath); }} className="min-h-11 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white">Dashboard</button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => { setMobileMenuOpen(false); navigate("/login"); }} className="min-h-11 rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200">Login</button>
+                    <button type="button" onClick={() => { setMobileMenuOpen(false); navigate("/register"); }} className="min-h-11 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white">Get Started</button>
+                  </>
+                )}
+              </div>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* =====================================================
@@ -429,13 +485,13 @@ const dashboardPath =
             }}
           />
 
-          <div className="relative mx-auto max-w-7xl px-5 pb-24 pt-20 md:px-6 md:pb-32 md:pt-28">
+          <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-12 sm:px-5 sm:pb-20 sm:pt-16 md:px-6 md:pb-32 md:pt-28">
 
             <div className="mx-auto max-w-5xl text-center">
 
               {/* Badge */}
 
-              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-2 text-sm text-blue-300 shadow-lg shadow-blue-600/5">
+              <div className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs sm:mb-7 sm:px-4 sm:text-sm text-blue-300 shadow-lg shadow-blue-600/5">
                 <Sparkles
                   size={15}
                   className="animate-pulse"
@@ -448,7 +504,7 @@ const dashboardPath =
 
               {/* Heading */}
 
-              <h1 className="text-5xl font-black leading-[0.95] tracking-tight sm:text-6xl md:text-8xl">
+              <h1 className="text-4xl font-black leading-[1.02] tracking-tight sm:text-6xl md:text-8xl">
 
                 Build your future.
 
@@ -459,7 +515,7 @@ const dashboardPath =
                 </span>
               </h1>
 
-              <p className="mx-auto mt-8 max-w-2xl text-base leading-7 text-slate-400 md:text-lg">
+              <p className="mx-auto mt-5 max-w-2xl px-1 text-sm leading-6 text-slate-400 sm:mt-8 sm:text-base sm:leading-7 md:text-lg">
                 Discover opportunities, connect with companies,
                 collaborate with colleges and build career-ready
                 skills through one connected platform.
@@ -467,13 +523,13 @@ const dashboardPath =
 
               {/* Search */}
 
-              <div className="mx-auto mt-10 max-w-4xl rounded-2xl border border-white/10 bg-white/[0.04] p-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
+              <div className="mx-auto mt-7 w-full max-w-4xl rounded-2xl border border-white/10 bg-white/[0.04] p-2 shadow-2xl shadow-black/30 backdrop-blur-xl sm:mt-10">
 
                 <div className="flex flex-col gap-2 md:flex-row">
 
                   {/* Keyword */}
 
-                  <div className="flex flex-1 items-center gap-3 rounded-xl bg-slate-900/90 px-4 py-3.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl bg-slate-900/90 px-3 py-3.5 sm:px-4">
                     <Search
                       size={20}
                       className="shrink-0 text-blue-400"
@@ -493,7 +549,7 @@ const dashboardPath =
 
                   {/* Location */}
 
-                  <div className="flex flex-1 items-center gap-3 rounded-xl bg-slate-900/90 px-4 py-3.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl bg-slate-900/90 px-3 py-3.5 sm:px-4">
                     <MapPin
                       size={20}
                       className="shrink-0 text-cyan-400"
@@ -517,7 +573,7 @@ const dashboardPath =
                     type="button"
                     onClick={handleSearch}
                     disabled={searching}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-3.5 font-semibold transition hover:-translate-y-0.5 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 font-semibold sm:w-auto sm:px-7 transition hover:-translate-y-0.5 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {searching ? (
                       <>
@@ -576,7 +632,7 @@ const dashboardPath =
 
         <section className="border-y border-white/10 bg-slate-900/50">
 
-          <div className="mx-auto grid max-w-7xl grid-cols-1 px-5 py-6 sm:grid-cols-3 md:px-6">
+          <div className="mx-auto grid max-w-7xl grid-cols-3 gap-1 px-2 py-3 sm:px-5 sm:py-6 md:px-6">
 
             {stats.map((stat) => (
               <LiveStat
@@ -596,7 +652,7 @@ const dashboardPath =
 
         <section
           id="jobs"
-          className="scroll-mt-24 mx-auto max-w-7xl px-5 py-24 md:px-6"
+          className="scroll-mt-20 mx-auto max-w-7xl px-4 py-14 sm:px-5 sm:py-20 md:px-6 md:py-24"
         >
 
           <SectionHeading
@@ -619,7 +675,7 @@ const dashboardPath =
               text="Once companies publish jobs, they will appear here automatically."
             />
           ) : (
-            <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-7 grid gap-4 sm:mt-10 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
               {jobs.slice(0, 6).map((job) => (
                 <JobCard
   key={job.id || job._id}
@@ -641,7 +697,7 @@ const dashboardPath =
           className="scroll-mt-24 border-y border-white/10 bg-slate-900/40"
         >
 
-          <div className="mx-auto max-w-7xl px-5 py-24 md:px-6">
+          <div className="mx-auto max-w-7xl px-4 py-14 sm:px-5 sm:py-20 md:px-6 md:py-24">
 
             <SectionHeading
               eyebrow="Employer ecosystem"
@@ -663,7 +719,7 @@ const dashboardPath =
                 text="Registered companies will appear here automatically."
               />
             ) : (
-              <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-7 grid gap-4 sm:mt-10 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
                 {companies
                   .slice(0, 8)
@@ -689,7 +745,7 @@ const dashboardPath =
 
         <section
           id="training"
-          className="scroll-mt-24 mx-auto max-w-7xl px-5 py-24 md:px-6"
+          className="scroll-mt-20 mx-auto max-w-7xl px-4 py-14 sm:px-5 sm:py-20 md:px-6 md:py-24"
         >
 
           <SectionHeading
@@ -712,7 +768,7 @@ const dashboardPath =
               text="Training institutes will appear here after registration."
             />
           ) : (
-            <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-7 grid gap-4 sm:mt-10 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
 
               {trainingInstitutes
                 .slice(0, 6)
@@ -740,7 +796,7 @@ const dashboardPath =
           className="border-y border-white/10 bg-slate-900/40"
         >
 
-          <div className="mx-auto max-w-7xl px-5 py-24 md:px-6">
+          <div className="mx-auto max-w-7xl px-4 py-14 sm:px-5 sm:py-20 md:px-6 md:py-24">
 
             <SectionHeading
               eyebrow="The JobOrbit ecosystem"
@@ -795,7 +851,7 @@ const dashboardPath =
             WHY JOBORBIT
         ====================================================== */}
 
-        <section className="mx-auto max-w-7xl px-5 py-24 md:px-6">
+        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-5 sm:py-20 md:px-6 md:py-24">
 
           <div className="grid items-center gap-14 lg:grid-cols-2">
 
@@ -901,9 +957,9 @@ const dashboardPath =
             CTA
         ====================================================== */}
 
-        <section className="px-5 pb-24 md:px-6">
+        <section className="px-4 pb-14 sm:px-5 sm:pb-20 md:px-6 md:pb-24">
 
-          <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-600/20 via-slate-900 to-slate-900 p-10 text-center shadow-2xl md:p-16">
+          <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-600/20 via-slate-900 to-slate-900 p-6 text-center shadow-2xl sm:p-10 md:p-16">
 
             <div className="absolute left-1/2 top-0 h-40 w-96 -translate-x-1/2 rounded-full bg-blue-500/20 blur-3xl" />
 
@@ -914,7 +970,7 @@ const dashboardPath =
                 size={31}
               />
 
-              <h2 className="mt-5 text-4xl font-black md:text-5xl">
+              <h2 className="mt-5 text-3xl font-black sm:text-4xl md:text-5xl">
                 Ready to enter your orbit?
               </h2>
 
@@ -1014,11 +1070,11 @@ function SectionHeading({
         {eyebrow}
       </p>
 
-      <h2 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">
+      <h2 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl md:text-5xl">
         {title}
       </h2>
 
-      <p className="mt-4 leading-7 text-slate-400">
+      <p className="mt-4 text-sm leading-6 text-slate-400 sm:text-base sm:leading-7">
         {description}
       </p>
 
@@ -1036,18 +1092,18 @@ function LiveStat({
   value,
 }) {
   return (
-    <div className="flex items-center justify-center gap-4 border-white/10 py-5 sm:border-r last:border-r-0">
+    <div className="flex min-w-0 flex-col items-center justify-center gap-2 border-r border-white/10 px-1 py-3 text-center last:border-r-0 sm:flex-row sm:gap-4 sm:py-5 sm:text-left">
 
       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600/10 text-blue-400">
         <Icon size={21} />
       </div>
 
       <div>
-        <p className="text-2xl font-black">
+        <p className="text-xl font-black sm:text-2xl">
           {value}
         </p>
 
-        <p className="text-xs text-slate-500">
+        <p className="text-[10px] leading-4 text-slate-500 sm:text-xs">
           {label}
         </p>
       </div>
@@ -1088,7 +1144,7 @@ function JobCard({
     "Opportunity";
 
   return (
-    <div className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-blue-500/30 hover:bg-blue-500/[0.04]">
+    <div className="group min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6 transition duration-300 hover:-translate-y-1 hover:border-blue-500/30 hover:bg-blue-500/[0.04]">
 
       <div className="flex items-start justify-between gap-4">
 
@@ -1102,11 +1158,11 @@ function JobCard({
 
       </div>
 
-      <h3 className="mt-5 line-clamp-2 text-lg font-bold">
+      <h3 className="mt-5 break-words text-base font-bold sm:text-lg">
         {title}
       </h3>
 
-      <p className="mt-2 text-sm text-blue-400">
+      <p className="mt-2 break-words text-sm text-blue-400">
         {company}
       </p>
 
@@ -1161,17 +1217,17 @@ function CompanyCard({
     "Location not specified";
 
   return (
-    <div className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-blue-500/30">
+    <div className="group min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6 transition duration-300 hover:-translate-y-1 hover:border-blue-500/30">
 
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600/10 text-blue-400 transition group-hover:bg-blue-600 group-hover:text-white">
         <Building2 size={22} />
       </div>
 
-      <h3 className="mt-5 line-clamp-1 text-lg font-bold">
+      <h3 className="mt-5 break-words text-base font-bold sm:text-lg">
         {name}
       </h3>
 
-      <p className="mt-2 text-sm text-slate-400">
+      <p className="mt-2 break-words text-sm text-slate-400">
         {industry}
       </p>
 
@@ -1207,13 +1263,13 @@ function TrainingCard({
     "Training programs";
 
   return (
-    <div className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-blue-500/30">
+    <div className="group min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6 transition duration-300 hover:-translate-y-1 hover:border-blue-500/30">
 
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
         <BookOpen size={22} />
       </div>
 
-      <h3 className="mt-5 line-clamp-1 text-lg font-bold">
+      <h3 className="mt-5 break-words text-base font-bold sm:text-lg">
         {name}
       </h3>
 
@@ -1247,7 +1303,7 @@ function FeatureCard({
     <button
       type="button"
       onClick={onClick}
-      className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-left transition duration-300 hover:-translate-y-2 hover:border-blue-500/30 hover:bg-blue-500/[0.04]"
+      className="group min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6 text-left transition duration-300 hover:-translate-y-2 hover:border-blue-500/30 hover:bg-blue-500/[0.04]"
     >
 
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600/10 text-blue-400 transition duration-300 group-hover:bg-blue-600 group-hover:text-white">
@@ -1325,7 +1381,7 @@ function DashboardItem({
           {title}
         </p>
 
-        <p className="text-xs text-slate-500">
+        <p className="text-[10px] leading-4 text-slate-500 sm:text-xs">
           {text}
         </p>
       </div>

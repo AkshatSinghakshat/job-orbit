@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -11,30 +12,60 @@ import {
   LogOut,
   LayoutDashboard,
 } from "lucide-react";
+
 import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Authentication
   const token = localStorage.getItem("token");
   const isLoggedIn = Boolean(token);
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const role = (
+  // User information
+  let user = {};
+
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "{}");
+  } catch (error) {
+    console.error("Failed to read user information:", error);
+  }
+
+  // Get role from localStorage or user object
+  const role = String(
     localStorage.getItem("role") ||
-    user.role ||
-    user.userType ||
-    "student"
-  ).toLowerCase();
+      user.role ||
+      user.userType ||
+      "student"
+  )
+    .trim()
+    .toLowerCase();
+
+  // Role-based Dashboard Routes
+  const dashboardPathMap = {
+    student: "/student/dashboard",
+
+    company: "/company/dashboard",
+    employer: "/company/dashboard",
+
+    training: "/training-institute/dashboard",
+    "training-institute": "/training-institute/dashboard",
+    training_institute: "/training-institute/dashboard",
+
+    admin: "/developer/dashboard",
+    developer: "/developer/dashboard",
+  };
 
   const dashboardPath =
-    role === "company" || role === "employer"
-      ? "/company-dashboard"
-      : "/student-dashboard";
+    dashboardPathMap[role] || "/student/dashboard";
 
-  const closeMobileMenu = () => setMobileOpen(false);
+  // Close mobile menu
+  const closeMobileMenu = () => {
+    setMobileOpen(false);
+  };
 
+  // Logout
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -43,16 +74,30 @@ export default function Navbar() {
     localStorage.removeItem("accessToken");
 
     setMobileOpen(false);
+
     navigate("/login", { replace: true });
-    window.location.reload();
   };
 
+  // Navigation links
   const navLinks = [
-    { label: "Home", path: "/", icon: Home },
-    { label: "Jobs", path: "/#jobs", icon: BriefcaseBusiness },
-    { label: "Feed", path: "/feed", icon: Users },
+    {
+      label: "Home",
+      path: "/",
+      icon: Home,
+    },
+    {
+      label: "Jobs",
+      path: "/#jobs",
+      icon: BriefcaseBusiness,
+    },
+    {
+      label: "Feed",
+      path: "/feed",
+      icon: Users,
+    },
   ];
 
+  // Common link styles
   const linkClass =
     "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium " +
     "text-gray-700 transition hover:bg-blue-50 hover:text-blue-700";
@@ -72,7 +117,11 @@ export default function Navbar() {
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-1 md:flex">
           {navLinks.map(({ label, path, icon: Icon }) => (
-            <Link key={label} to={path} className={linkClass}>
+            <Link
+              key={label}
+              to={path}
+              className={linkClass}
+            >
               <Icon size={17} />
               {label}
             </Link>
@@ -80,12 +129,18 @@ export default function Navbar() {
 
           {isLoggedIn && (
             <>
-              <Link to="/messages" className={linkClass}>
+              <Link
+                to="/messages"
+                className={linkClass}
+              >
                 <MessageCircle size={17} />
                 Messages
               </Link>
 
-              <Link to="/public-profile" className={linkClass}>
+              <Link
+                to="/public-profile"
+                className={linkClass}
+              >
                 <UserCircle size={17} />
                 Profile
               </Link>
@@ -99,6 +154,7 @@ export default function Navbar() {
             <>
               <NotificationBell />
 
+              {/* Feed */}
               <Link
                 to="/feed"
                 className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
@@ -106,6 +162,7 @@ export default function Navbar() {
                 Feed
               </Link>
 
+              {/* Role-based Dashboard */}
               <Link
                 to={dashboardPath}
                 className="flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
@@ -114,6 +171,7 @@ export default function Navbar() {
                 Dashboard
               </Link>
 
+              {/* Logout */}
               <button
                 type="button"
                 onClick={handleLogout}
@@ -153,7 +211,11 @@ export default function Navbar() {
             aria-expanded={mobileOpen}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100"
           >
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileOpen ? (
+              <X size={24} />
+            ) : (
+              <Menu size={24} />
+            )}
           </button>
         </div>
       </div>
@@ -194,6 +256,7 @@ export default function Navbar() {
                   Profile
                 </Link>
 
+                {/* Role-based Dashboard */}
                 <Link
                   to={dashboardPath}
                   onClick={closeMobileMenu}
@@ -203,6 +266,7 @@ export default function Navbar() {
                   Dashboard
                 </Link>
 
+                {/* Logout */}
                 <button
                   type="button"
                   onClick={handleLogout}

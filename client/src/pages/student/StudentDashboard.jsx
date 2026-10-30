@@ -439,6 +439,16 @@ function StudentDashboard() {
               </span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => navigate("/training/courses")}
+              className="group flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-2.5 text-sm font-semibold text-indigo-200 transition hover:bg-indigo-500/20 sm:px-4"
+              title="Browse training courses"
+            >
+              <GraduationCap size={18} className="transition group-hover:scale-110" />
+              <span className="hidden sm:inline">Training</span>
+            </button>
+
             {/* FEED */}
 
             <button
