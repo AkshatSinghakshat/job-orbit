@@ -30,20 +30,20 @@ const messageRoutes = require("./src/routes/messageRoutes");
 const codeArenaRoutes = require("./src/routes/codeArenaRoutes");
 const profileVisitRoutes = require("./src/routes/profileVisitRoutes");
 const developerRoutes = require("./src/routes/developerRoutes");
-
-// Company Settings Route
 const companySettingsRoutes = require(
   "./src/routes/companySettingsRoutes"
 );
 
 // ==========================================
-// DATABASE
+// DATABASE & MODELS
 // ==========================================
 
 const sequelize = require("./src/config/db");
-const migrateTrainingSchema = require("./src/scripts/migrateTrainingSchema");
+const migrateTrainingSchema = require(
+  "./src/scripts/migrateTrainingSchema"
+);
 
-// Register existing models and associations
+// Register existing models and associations.
 require("./src/models");
 
 // ==========================================
@@ -55,14 +55,25 @@ const allowedOrigins = [
   "http://localhost:5174",
   "http://localhost:5176",
   process.env.FRONTEND_URL,
-].filter(Boolean);
+]
+  .filter(Boolean)
+  .map((origin) => origin.replace(/\/+$/, ""));
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Requests without an Origin header may include health checks.
+      if (!origin) {
         return callback(null, true);
       }
+
+      const normalizedOrigin = origin.replace(/\/+$/, "");
+
+      if (allowedOrigins.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      console.warn("Blocked CORS origin:", origin);
 
       return callback(
         new Error(`CORS origin not allowed: ${origin}`)
@@ -138,10 +149,7 @@ app.use("/api/likes", likeRoutes);
 app.use("/api/profile-visits", profileVisitRoutes);
 app.use("/api/codearena", codeArenaRoutes);
 
-// Developer Dashboard API
 app.use("/api/developer", developerRoutes);
-
-// Company Settings API
 app.use("/api/company-settings", companySettingsRoutes);
 
 // ==========================================
@@ -157,15 +165,37 @@ app.get("/", (req, res) => {
 });
 
 // ==========================================
-// HEALTH CHECK
+// LIVENESS CHECK
 // ==========================================
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
-    message: "JobOrbit backend is healthy",
+    message: "JobOrbit backend is running",
     timestamp: new Date().toISOString(),
   });
+});
+
+// ==========================================
+// DATABASE READINESS CHECK
+// ==========================================
+
+app.get("/api/ready", async (req, res) => {
+  try {
+    await sequelize.authenticate();
+
+    return res.status(200).json({
+      success: true,
+      message: "Database connection is ready",
+    });
+  } catch (error) {
+    console.error("Readiness check failed:", error.message);
+
+    return res.status(503).json({
+      success: false,
+      message: "Database is unavailable",
+    });
+  }
 });
 
 // ==========================================
@@ -191,7 +221,9 @@ app.use((err, req, res, next) => {
     return next(err);
   }
 
-  res.status(err.status || 500).json({
+  const statusCode = err.status || 500;
+
+  res.status(statusCode).json({
     success: false,
     message:
       process.env.NODE_ENV === "production"
@@ -201,35 +233,68 @@ app.use((err, req, res, next) => {
 });
 
 // ==========================================
-// START SERVER
+// SERVER STARTUP
 // ==========================================
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
+
+let httpServer;
 
 const startServer = async () => {
+  // Start listening before connecting to the database.
+  // This lets Render detect the open HTTP port even if
+  // the database is temporarily unavailable.
+
+  httpServer = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 JobOrbit Server listening on port ${PORT}`);
+  });
+
+  httpServer.on("error", (error) => {
+    console.error("❌ HTTP Server Error:", error.message);
+    process.exit(1);
+  });
+
   try {
-    // Connect to MySQL
+    // Validate the database connection.
     await sequelize.authenticate();
 
     console.log("✅ MySQL Connected Successfully");
 
-    await migrateTrainingSchema({ authenticate: false });
-    // Schema changes are applied through explicit additive migrations. Global sync can
-    // alter every table and race legacy schema repairs.
-    // Start listening only after the database connection is ready.
-    await new Promise((resolve, reject) => {
-      const server = app.listen(PORT, "0.0.0.0", () => {
-        console.log(`JobOrbit Server Running on Port ${PORT}`);
-        resolve(server);
-      });
-      server.once("error", reject);
+    // Run the existing additive training schema migration.
+    await migrateTrainingSchema({
+      authenticate: false,
     });
-  } catch (error) {
-    console.error("Database/Startup Failed:", error.message);
-    if (process.env.NODE_ENV !== "production") console.error(error.stack);
 
-    process.exitCode = 1;
+    console.log("✅ Training schema migration completed");
+  } catch (error) {
+    // Keep the HTTP server alive so Render can reach the
+    // health endpoint. Database-dependent requests may fail
+    // until the connection or migration problem is resolved.
+    console.error(
+      "❌ Database/Startup Failed:",
+      error.message
+    );
   }
 };
+
+// ==========================================
+// PROCESS ERROR HANDLING
+// ==========================================
+
+process.on("unhandledRejection", (reason) => {
+  console.error("❌ Unhandled Promise Rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught Exception:", error);
+
+  if (httpServer) {
+    httpServer.close(() => {
+      process.exit(1);
+    });
+  } else {
+    process.exit(1);
+  }
+});
 
 startServer();
