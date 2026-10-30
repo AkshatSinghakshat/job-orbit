@@ -1,6 +1,10 @@
-# Backend secrets
+# Backend secrets and dependencies
 server/.env
 server/node_modules/
+
+# Do not upload user files or backups
+server/uploads/
+server-backup/
 
 # Frontend dependencies and local environment
 client/node_modules/
